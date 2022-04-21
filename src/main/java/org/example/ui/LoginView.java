@@ -2,6 +2,7 @@ package org.example.ui;
 
 import org.example.networking.ServerThread;
 import org.example.networking.SocketBoard;
+import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.awt.*;
@@ -18,21 +19,23 @@ public class LoginView extends JFrame implements ActionListener {
     final JTextField myPortField = new JTextField();
     final JTextField otherPortField = new JTextField();
     final JButton connectButton = new JButton("CONNECT");
+    private final String destPath;
 
-    public LoginView() throws HeadlessException {
+    public LoginView(String destPath) throws HeadlessException {
         container.setLayout(null);
         setLocationAndSize();
         addComponentsToContainer();
         connectButton.addActionListener(this);
+        this.destPath = destPath;
     }
 
-    private static Socket getSocket(int port) throws IOException {
+    private static @NotNull Socket getSocket(int port) throws IOException {
         InetAddress ip = InetAddress.getByName("localhost");
         return new Socket(ip, port);
     }
 
     @Override
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(@NotNull ActionEvent e) {
         if (e.getSource() == connectButton) {
             try {
                 int myPort = Integer.parseInt(myPortField.getText());
@@ -67,11 +70,11 @@ public class LoginView extends JFrame implements ActionListener {
     }
 
     private void initChat(Socket client, Socket server) {
-        ChatView chatView = new ChatView(client, server);
+        ChatView chatView = new ChatView(client, server, destPath);
 
         chatView.setSize(700, 700);
         chatView.setVisible(true);
-        chatView.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        chatView.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         chatView.setLocationRelativeTo(this);
     }
 }

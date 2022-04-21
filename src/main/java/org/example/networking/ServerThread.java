@@ -15,9 +15,7 @@ public class ServerThread extends Thread {
 
     @Override
     public void run() {
-        ServerSocket ss;
-        try {
-            ss = new ServerSocket(port);
+        try (ServerSocket ss = new ServerSocket(port)){
 
             while (true) {
                 Socket s = null;
@@ -37,6 +35,5 @@ public class ServerThread extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 }

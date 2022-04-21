@@ -9,7 +9,6 @@ public class AppenderThread implements Runnable {
     MessageBoard board;
     JTextArea chatArea;
 
-
     @Override
     public void run() {
         while (true) {
@@ -18,6 +17,7 @@ public class AppenderThread implements Runnable {
                 chatArea.append("\n\t\t\t\t [other guy]: " + message);
             } catch (InterruptedException ex) {
                 System.err.println(ex.getMessage());
+                Thread.currentThread().interrupt();
             }
         }
     }

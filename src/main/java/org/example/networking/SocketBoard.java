@@ -16,6 +16,6 @@ public class SocketBoard {
 
     public synchronized void put(Socket s) {
         list.add(s);
-        notify();
+        notifyAll();
     }
 }
