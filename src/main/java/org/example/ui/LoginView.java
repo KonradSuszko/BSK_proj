@@ -1,0 +1,77 @@
+package org.example.ui;
+
+import org.example.networking.ServerThread;
+import org.example.networking.SocketBoard;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+
+public class LoginView extends JFrame implements ActionListener {
+    final Container container = getContentPane();
+    final JLabel myPortLabel = new JLabel("MY PORT");
+    final JLabel otherPortLabel = new JLabel("OTHER PORT");
+    final JTextField myPortField = new JTextField();
+    final JTextField otherPortField = new JTextField();
+    final JButton connectButton = new JButton("CONNECT");
+
+    public LoginView() throws HeadlessException {
+        container.setLayout(null);
+        setLocationAndSize();
+        addComponentsToContainer();
+        connectButton.addActionListener(this);
+    }
+
+    private static Socket getSocket(int port) throws IOException {
+        InetAddress ip = InetAddress.getByName("localhost");
+        return new Socket(ip, port);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == connectButton) {
+            try {
+                int myPort = Integer.parseInt(myPortField.getText());
+                int otherPort = Integer.parseInt(otherPortField.getText());
+                SocketBoard board = new SocketBoard();
+                ServerThread serverThread = new ServerThread(myPort, board);
+                serverThread.start();
+                Socket clientSocket = getSocket(otherPort);
+                Socket serverSocket = board.take();
+                serverThread.interrupt();
+                initChat(clientSocket, serverSocket);
+            } catch (IOException | InterruptedException exception) {
+                JOptionPane.showMessageDialog(this, "Something wrong I can feel it");
+            }
+        }
+    }
+
+    private void setLocationAndSize() {
+        myPortLabel.setBounds(50, 50, 100, 30);
+        otherPortLabel.setBounds(50, 100, 100, 30);
+        myPortField.setBounds(150, 50, 150, 30);
+        otherPortField.setBounds(150, 100, 150, 30);
+        connectButton.setBounds(200, 150, 100, 30);
+    }
+
+    private void addComponentsToContainer() {
+        container.add(myPortLabel);
+        container.add(otherPortLabel);
+        container.add(myPortField);
+        container.add(otherPortField);
+        container.add(connectButton);
+    }
+
+    private void initChat(Socket client, Socket server) {
+        ChatView chatView = new ChatView(client, server);
+
+        chatView.setSize(700, 700);
+        chatView.setVisible(true);
+        chatView.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        chatView.setLocationRelativeTo(this);
+    }
+}
