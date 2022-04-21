@@ -17,22 +17,17 @@ import java.net.Socket;
 import java.nio.file.Files;
 
 public class ChatView extends JFrame implements ActionListener {
-    private final transient Socket clientSocket;
-    private final transient Socket serverSocket;
     final Container container = getContentPane();
     final JScrollPane scrollPane = new JScrollPane();
     final JTextArea chatArea = new JTextArea();
     final JTextField field = new JTextField();
     final JButton sendButton = new JButton("SEND");
     final JButton fileButton = new JButton("FILE");
-    private ObjectOutputStream writeStream;
-    private ObjectInputStream readStream;
-    private String destPath;
+    private transient ObjectOutputStream writeStream;
+    private transient ObjectInputStream readStream;
 
 
     public ChatView(Socket clientSocket, @NotNull Socket serverSocket, String destPath) throws HeadlessException {
-        this.clientSocket = clientSocket;
-        this.serverSocket = serverSocket;
         container.setLayout(null);
         setLocationAndSize();
         addComponentsToContainer();
@@ -40,14 +35,13 @@ public class ChatView extends JFrame implements ActionListener {
         sendButton.addActionListener(this);
         field.addActionListener(this);
         fileButton.addActionListener(this);
-        this.destPath = destPath;
 
         MessageBoard board = new MessageBoard();
         try {
             writeStream = new ObjectOutputStream(clientSocket.getOutputStream());
             readStream = new ObjectInputStream(serverSocket.getInputStream());
         } catch (IOException ex) {
-            System.err.println(ex.getMessage());
+            ex.printStackTrace();
         }
         Thread listener = new Thread(new ListenerThread(readStream, board, destPath));
         Thread appender = new Thread(new AppenderThread(board, chatArea));
@@ -66,9 +60,8 @@ public class ChatView extends JFrame implements ActionListener {
                 chatArea.append("[me]: " + message);
                 field.setText("");
                 writeStream.writeObject(message);
-                System.out.println("Sent: " + message);
             } catch (IOException ex) {
-                System.err.println(ex.getMessage());
+                ex.printStackTrace();
             }
         }
         else if(e.getSource() == fileButton){
@@ -79,7 +72,7 @@ public class ChatView extends JFrame implements ActionListener {
             }
             File file = jf.getSelectedFile();
             int dotIndex = file.toString().lastIndexOf('.');
-            String extension = null;
+            String extension;
             if(dotIndex > 0){
                 extension = file.toString().substring(dotIndex + 1);
             }
@@ -87,18 +80,17 @@ public class ChatView extends JFrame implements ActionListener {
                 return;
             }
 
-            if(!extension.toLowerCase().equals("txt") && !extension.toLowerCase().equals("pdf")
-                    && !extension.toLowerCase().equals("png") && !extension.toLowerCase().equals("avi")){
+            if(!extension.equalsIgnoreCase("txt") && !extension.equalsIgnoreCase("pdf")
+                    && !extension.equalsIgnoreCase("png") && !extension.equalsIgnoreCase("avi")){
                 JOptionPane.showMessageDialog(this, "Bad format");
                 return;
             }
             try {
                 writeStream.flush();
-                //writeStream.writeObject(file);
                 writeStream.writeObject(Files.readAllBytes(file.toPath()));
                 chatArea.append("[me]: File sent -> " + file.getName() + "\n");
             } catch (IOException ex){
-                System.err.println(ex.getMessage());
+                ex.printStackTrace();
             }
         }
     }

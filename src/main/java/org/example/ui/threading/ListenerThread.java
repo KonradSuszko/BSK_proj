@@ -1,28 +1,28 @@
 package org.example.ui.threading;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import net.sf.jmimemagic.*;
 
 import java.io.*;
 import java.util.Random;
 
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ListenerThread implements Runnable {
-    private ObjectInputStream readStream;
-    private MessageBoard board;
-    private String destPath;
+    private final ObjectInputStream readStream;
+    private final MessageBoard board;
+    private final String destPath;
+    private final Random random = new Random();
 
     @Override
     public void run() {
-        while (true) {
+        while (!Thread.interrupted()) {
             try {
                 var message = readStream.readObject();
                 if (message instanceof String) {
                     String tmp = (String) message;
                     board.put(tmp);
                 } else if (message instanceof byte[]) {
-                    Magic parser = new Magic();
-                    MagicMatch match = parser.getMagicMatch((byte[]) message);
+                    MagicMatch match = Magic.getMagicMatch((byte[]) message);
                     String extension = "";
                     String mime = match.getMimeType();
                     if (mime.equalsIgnoreCase("text/plain")) {
@@ -34,20 +34,13 @@ public class ListenerThread implements Runnable {
                     } else if (mime.equalsIgnoreCase("???")) {
                         extension = ".avi";
                     }
-                    Random random = new Random();
-                    File tmp = new File(destPath + "/" + random.nextInt() + extension);
-                    OutputStream os = new FileOutputStream(tmp);
-                    os.write((byte[]) message);
-                    os.close();
+                    File tmp = new File(destPath + random.nextInt() + extension);
+                    try (OutputStream os = new FileOutputStream(tmp)) {
+                        os.write((byte[]) message);
+                    }
                     board.put(tmp.getName());
                 }
-            } catch (IOException | ClassNotFoundException e) {
-                System.err.println(e.getMessage());
-            } catch (MagicMatchNotFoundException e) {
-                e.printStackTrace();
-            } catch (MagicException e) {
-                e.printStackTrace();
-            } catch (MagicParseException e) {
+            } catch (IOException | ClassNotFoundException | MagicMatchNotFoundException | MagicParseException | MagicException e) {
                 e.printStackTrace();
             }
         }

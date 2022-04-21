@@ -50,7 +50,7 @@
                             <configuration>
                                 <mainClass>org.example.Main</mainClass>
                                 <arguments>
-                                    <argument>src/main/resources/first</argument>
+                                    <argument>src/main/resources/first/</argument>
                                 </arguments>
                             </configuration>
                         </execution>
@@ -62,7 +62,7 @@
                             <configuration>
                                 <mainClass>org.example.Main</mainClass>
                                 <arguments>
-                                    <argument>src/main/resources/second</argument>
+                                    <argument>src/main/resources/second/</argument>
                                 </arguments>
                             </configuration>
                         </execution>

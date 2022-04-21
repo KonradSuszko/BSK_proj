@@ -47,8 +47,10 @@ public class LoginView extends JFrame implements ActionListener {
                 Socket serverSocket = board.take();
                 serverThread.interrupt();
                 initChat(clientSocket, serverSocket);
-            } catch (IOException | InterruptedException exception) {
+            } catch (IOException exception) {
                 JOptionPane.showMessageDialog(this, "Something wrong I can feel it");
+            } catch (InterruptedException exception){
+                Thread.currentThread().interrupt();
             }
         }
     }
