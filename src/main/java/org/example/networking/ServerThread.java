@@ -15,28 +15,27 @@ public class ServerThread extends Thread {
 
     @Override
     public void run() {
-        ServerSocket ss;
-        try {
-            ss = new ServerSocket(port);
+        try (ServerSocket ss = new ServerSocket(port)){
 
-            while (true) {
-                Socket s = null;
-
-                // petla do akceptowania polaczen
-                try {
-                    s = ss.accept();
-                    System.out.println("new connection : " + s);
-                    board.put(s);
-
-                } catch (Exception e) {
-                    assert s != null;
-                    s.close();
-                    e.printStackTrace();
-                }
+            while (!Thread.interrupted()) {
+                accept(ss);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
+    private void accept(ServerSocket ss) throws IOException {
+        Socket s = null;
+        try {
+            s = ss.accept();
+            System.out.println("new connection : " + s);
+            board.put(s);
+
+        } catch (Exception e) {
+            assert s != null;
+            s.close();
+            e.printStackTrace();
+        }
     }
 }

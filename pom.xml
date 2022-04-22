@@ -20,6 +20,18 @@
             <artifactId>lombok</artifactId>
             <version>1.18.22</version>
         </dependency>
+        <dependency>
+            <groupId>net.sf.jmimemagic</groupId>
+            <artifactId>jmimemagic</artifactId>
+            <version>0.1.5</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>RELEASE</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -37,6 +49,9 @@
                             </goals>
                             <configuration>
                                 <mainClass>org.example.Main</mainClass>
+                                <arguments>
+                                    <argument>src/main/resources/first/</argument>
+                                </arguments>
                             </configuration>
                         </execution>
                         <execution>
@@ -46,6 +61,9 @@
                             </goals>
                             <configuration>
                                 <mainClass>org.example.Main</mainClass>
+                                <arguments>
+                                    <argument>src/main/resources/second/</argument>
+                                </arguments>
                             </configuration>
                         </execution>
                     </executions>
