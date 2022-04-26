@@ -11,7 +11,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
-import java.nio.file.Files;
 
 public class ChatView extends JFrame implements ActionListener {
     final Container container = getContentPane();
@@ -22,9 +21,6 @@ public class ChatView extends JFrame implements ActionListener {
     final JButton fileButton = new JButton("FILE");
     private transient ObjectOutputStream writeStream;
     private transient ObjectInputStream readStream;
-    private transient FileOutputStream fileWriteStream;
-    private transient FileInputStream fileReadStream;
-    private ProgressBar pb;
 
     public ChatView(Socket clientSocket, @NotNull Socket serverSocket, String destPath) throws HeadlessException {
         container.setLayout(null);
@@ -42,7 +38,7 @@ public class ChatView extends JFrame implements ActionListener {
             ex.printStackTrace();
         }
         MessageBoard board = new MessageBoard();
-        Thread listener = new Thread(new ListenerThread(readStream, writeStream,  board, destPath));
+        Thread listener = new Thread(new ListenerThread(readStream, writeStream, board, destPath, this));
         Thread appender = new Thread(new AppenderThread(board, chatArea));
         listener.start();
         appender.start();
@@ -62,55 +58,26 @@ public class ChatView extends JFrame implements ActionListener {
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
-        }
-        else if(e.getSource() == fileButton){
+        } else if (e.getSource() == fileButton) {
             JFileChooser jf = new JFileChooser();
             int returnVal = jf.showDialog(this, "Upload");
-            if(returnVal != JFileChooser.APPROVE_OPTION){
+            if (returnVal != JFileChooser.APPROVE_OPTION) {
                 return;
             }
             File file = jf.getSelectedFile();
             int dotIndex = file.toString().lastIndexOf('.');
             String extension;
-            if(dotIndex > 0){
+            if (dotIndex > 0) {
                 extension = file.toString().substring(dotIndex + 1);
-            }
-            else{
+            } else {
                 return;
             }
-            if(!extension.equalsIgnoreCase("txt") && !extension.equalsIgnoreCase("pdf")
-                    && !extension.equalsIgnoreCase("png") && !extension.equalsIgnoreCase("avi")){
+            if (!extension.equalsIgnoreCase("txt") && !extension.equalsIgnoreCase("pdf")
+                    && !extension.equalsIgnoreCase("png") && !extension.equalsIgnoreCase("avi")) {
                 JOptionPane.showMessageDialog(this, "Bad format");
                 return;
             }
-            try {
-                writeStream.flush();
-                System.out.println(file.getPath());
-                InputStream in = new FileInputStream(new File(file.getPath()));
-                ProgressMonitorInputStream pm = new ProgressMonitorInputStream(
-                        this, " File reading, please wait ...", in);
-
-                pb = new ProgressBar((int)file.length());
-                pb.setVisible(true);
-
-                int val = 0;
-                int c = 0;
-                byte[] bytes = new byte[1024];
-                String msg = "";
-                writeStream.writeObject(bytes); // sample
-                while ((c = in.read(bytes)) != -1) {
-                    writeStream.write(bytes, 0, 1024);
-                    val += c;
-                    pb.getJb().setValue(val);
-                    pb.update(pb.getGraphics());
-                }
-                writeStream.writeObject(null);
-                chatArea.append("\n[me]: File sent -> " + file.getName());
-                pb.setVisible(false);
-                pb.dispose();
-            } catch (IOException ex){
-                ex.printStackTrace();
-            }
+            sendFileWithProgressBar(file);
         }
     }
 
@@ -130,5 +97,30 @@ public class ChatView extends JFrame implements ActionListener {
         container.add(field);
         container.add(sendButton);
         container.add(fileButton);
+    }
+
+    private void sendFileWithProgressBar(File file){
+        try (InputStream in = new FileInputStream(file.getPath())) {
+            writeStream.flush();
+            ProgressBar pb = new ProgressBar((int) file.length());
+            pb.setVisible(true);
+
+            int val = 0;
+            int c;
+            byte[] bytes = new byte[1024];
+            writeStream.writeObject(bytes); // sample
+            while ((c = in.read(bytes)) != -1) {
+                writeStream.write(bytes, 0, 1024);
+                val += c;
+                pb.getJb().setValue(val);
+                pb.update(pb.getGraphics());
+            }
+            writeStream.writeObject(null);
+            chatArea.append("\n[me]: File sent -> " + file.getName());
+            pb.setVisible(false);
+            pb.dispose();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
     }
 }

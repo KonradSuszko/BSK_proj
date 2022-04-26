@@ -19,7 +19,6 @@ public class LoginView extends JFrame implements ActionListener {
     final JTextField myPortField = new JTextField();
     final JTextField otherPortField = new JTextField();
     final JButton connectButton = new JButton("CONNECT");
-    final JLabel stateLabel = new JLabel("t");
     private final String destPath;
 
     public LoginView(String destPath) throws HeadlessException {
@@ -44,28 +43,11 @@ public class LoginView extends JFrame implements ActionListener {
                 SocketBoard board = new SocketBoard();
                 ServerThread serverThread = new ServerThread(myPort, board);
                 serverThread.start();
-                Socket clientSocket;
-                //JOptionPane.showMessageDialog(null, "Waiting for connection...");
-                int time = 5;
-                while(true) {
-                    try {
-                        clientSocket = getSocket(otherPort);
-                        break;
-                    } catch(IOException ex){
-                        Thread.sleep(1000);
-                        time -= 1;
-                        if (time == 0) {
-                            // jakas notyfikacja ze timeout
-                            JOptionPane.showMessageDialog(null, "Timeout");
-                            serverThread.kill();
-                            return;
-                        }
-                    }
-                }
+                Socket clientSocket = getClientSocket(otherPort, serverThread);
                 Socket serverSocket = board.take();
                 serverThread.interrupt();
                 initChat(clientSocket, serverSocket);
-            } catch (IOException exception) {
+            } catch (IllegalThreadStateException exception) {
                 JOptionPane.showMessageDialog(this, "Something wrong I can feel it");
             } catch (InterruptedException exception){
                 Thread.currentThread().interrupt();
@@ -79,7 +61,6 @@ public class LoginView extends JFrame implements ActionListener {
         myPortField.setBounds(150, 50, 150, 30);
         otherPortField.setBounds(150, 100, 150, 30);
         connectButton.setBounds(200, 150, 100, 30);
-        stateLabel.setBounds(50, 150, 100, 30);
     }
 
     private void addComponentsToContainer() {
@@ -88,15 +69,33 @@ public class LoginView extends JFrame implements ActionListener {
         container.add(myPortField);
         container.add(otherPortField);
         container.add(connectButton);
-        container.add(stateLabel);
     }
 
     private void initChat(Socket client, Socket server) {
         ChatView chatView = new ChatView(client, server, destPath);
-
         chatView.setSize(700, 700);
         chatView.setVisible(true);
         chatView.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         chatView.setLocationRelativeTo(this);
+    }
+
+    private Socket getClientSocket(int otherPort, ServerThread thread) throws IllegalThreadStateException, InterruptedException {
+        Socket clientSocket;
+        int time = 5;
+        while(true) {
+            try {
+                clientSocket = getSocket(otherPort);
+                break;
+            } catch(IOException ex){
+                Thread.sleep(1000);
+                time -= 1;
+                if (time == 0) {
+                    // jakas notyfikacja ze timeout
+                    JOptionPane.showMessageDialog(this, "Timeout");
+                    thread.interrupt();
+                }
+            }
+        }
+        return clientSocket;
     }
 }

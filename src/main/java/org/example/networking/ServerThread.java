@@ -47,8 +47,7 @@ public class ServerThread extends Thread {
 
         } catch (Exception e) {
             assert s != null;
-            if (s != null)
-                s.close();
+            s.close();
             e.printStackTrace();
         }
     }

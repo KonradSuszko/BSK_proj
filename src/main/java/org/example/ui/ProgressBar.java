@@ -5,17 +5,17 @@ import lombok.Getter;
 import javax.swing.*;
 
 
-public class ProgressBar extends JFrame{
+public class ProgressBar extends JFrame {
     @Getter
-    private JProgressBar jb;
+    private final JProgressBar jb;
 
-    public ProgressBar(int maxVal){
-        jb=new JProgressBar(0,maxVal);
-        jb.setBounds(40,40,160,30);
+    public ProgressBar(int maxVal) {
+        jb = new JProgressBar(0, maxVal);
+        jb.setBounds(40, 40, 160, 30);
         jb.setValue(0);
         jb.setStringPainted(true);
         add(jb);
-        setSize(250,150);
+        setSize(250, 150);
         setLayout(null);
         setLocationRelativeTo(null);
     }
