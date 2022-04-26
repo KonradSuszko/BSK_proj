@@ -9,10 +9,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.Socket;
 import java.nio.file.Files;
 
@@ -25,7 +22,9 @@ public class ChatView extends JFrame implements ActionListener {
     final JButton fileButton = new JButton("FILE");
     private transient ObjectOutputStream writeStream;
     private transient ObjectInputStream readStream;
-
+    private transient FileOutputStream fileWriteStream;
+    private transient FileInputStream fileReadStream;
+    private ProgressBar pb;
 
     public ChatView(Socket clientSocket, @NotNull Socket serverSocket, String destPath) throws HeadlessException {
         container.setLayout(null);
@@ -36,14 +35,14 @@ public class ChatView extends JFrame implements ActionListener {
         field.addActionListener(this);
         fileButton.addActionListener(this);
 
-        MessageBoard board = new MessageBoard();
         try {
             writeStream = new ObjectOutputStream(clientSocket.getOutputStream());
             readStream = new ObjectInputStream(serverSocket.getInputStream());
         } catch (IOException ex) {
             ex.printStackTrace();
         }
-        Thread listener = new Thread(new ListenerThread(readStream, board, destPath));
+        MessageBoard board = new MessageBoard();
+        Thread listener = new Thread(new ListenerThread(readStream, writeStream,  board, destPath));
         Thread appender = new Thread(new AppenderThread(board, chatArea));
         listener.start();
         appender.start();
@@ -79,7 +78,6 @@ public class ChatView extends JFrame implements ActionListener {
             else{
                 return;
             }
-
             if(!extension.equalsIgnoreCase("txt") && !extension.equalsIgnoreCase("pdf")
                     && !extension.equalsIgnoreCase("png") && !extension.equalsIgnoreCase("avi")){
                 JOptionPane.showMessageDialog(this, "Bad format");
@@ -87,8 +85,29 @@ public class ChatView extends JFrame implements ActionListener {
             }
             try {
                 writeStream.flush();
-                writeStream.writeObject(Files.readAllBytes(file.toPath()));
-                chatArea.append("[me]: File sent -> " + file.getName() + "\n");
+                System.out.println(file.getPath());
+                InputStream in = new FileInputStream(new File(file.getPath()));
+                ProgressMonitorInputStream pm = new ProgressMonitorInputStream(
+                        this, " File reading, please wait ...", in);
+
+                pb = new ProgressBar((int)file.length());
+                pb.setVisible(true);
+
+                int val = 0;
+                int c = 0;
+                byte[] bytes = new byte[1024];
+                String msg = "";
+                writeStream.writeObject(bytes); // sample
+                while ((c = in.read(bytes)) != -1) {
+                    writeStream.write(bytes, 0, 1024);
+                    val += c;
+                    pb.getJb().setValue(val);
+                    pb.update(pb.getGraphics());
+                }
+                writeStream.writeObject(null);
+                chatArea.append("\n[me]: File sent -> " + file.getName());
+                pb.setVisible(false);
+                pb.dispose();
             } catch (IOException ex){
                 ex.printStackTrace();
             }

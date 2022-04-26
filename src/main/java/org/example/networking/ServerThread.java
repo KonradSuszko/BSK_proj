@@ -11,12 +11,26 @@ public class ServerThread extends Thread {
 
     private int port;
     private SocketBoard board;
+    private ServerSocket ss;
+    private Socket s;
 
+    public ServerThread(int port, SocketBoard board){
+        this.port = port;
+        this.board = board;
+    }
+
+    public void kill() throws IOException{
+        this.interrupt();
+        if (s != null)
+            s.close();
+        if (ss != null)
+            ss.close();
+    }
 
     @Override
     public void run() {
-        try (ServerSocket ss = new ServerSocket(port)){
-
+        try {
+            ss = new ServerSocket(port);
             while (!Thread.interrupted()) {
                 accept(ss);
             }
@@ -26,7 +40,6 @@ public class ServerThread extends Thread {
     }
 
     private void accept(ServerSocket ss) throws IOException {
-        Socket s = null;
         try {
             s = ss.accept();
             System.out.println("new connection : " + s);
@@ -34,7 +47,8 @@ public class ServerThread extends Thread {
 
         } catch (Exception e) {
             assert s != null;
-            s.close();
+            if (s != null)
+                s.close();
             e.printStackTrace();
         }
     }
