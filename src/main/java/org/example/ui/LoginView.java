@@ -22,6 +22,7 @@ public class LoginView extends JFrame implements ActionListener {
     private final String destPath;
 
     public LoginView(String destPath) throws HeadlessException {
+        setTitle("Connection screen");
         container.setLayout(null);
         setLocationAndSize();
         addComponentsToContainer();

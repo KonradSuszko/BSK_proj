@@ -23,6 +23,7 @@ public class ChatView extends JFrame implements ActionListener {
     private transient ObjectInputStream readStream;
 
     public ChatView(Socket clientSocket, @NotNull Socket serverSocket, String destPath) throws HeadlessException {
+        setTitle("Chat");
         container.setLayout(null);
         setLocationAndSize();
         addComponentsToContainer();

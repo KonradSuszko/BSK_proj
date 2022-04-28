@@ -14,6 +14,7 @@ public class ProgressBar extends JFrame {
         jb.setBounds(40, 40, 160, 30);
         jb.setValue(0);
         jb.setStringPainted(true);
+        setTitle("Sending file");
         add(jb);
         setSize(250, 150);
         setLayout(null);
