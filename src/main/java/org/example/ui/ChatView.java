@@ -1,19 +1,34 @@
 package org.example.ui;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.example.ui.threading.AppenderThread;
 import org.example.ui.threading.ListenerThread;
 import org.example.ui.threading.MessageBoard;
 import org.jetbrains.annotations.NotNull;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import org.example.networking.Message;
+import org.example.cryptography.*;
 
+@Getter
 public class ChatView extends JFrame implements ActionListener {
     final Container container = getContentPane();
     final JScrollPane scrollPane = new JScrollPane();
@@ -23,6 +38,11 @@ public class ChatView extends JFrame implements ActionListener {
     final JButton fileButton = new JButton("FILE");
     private transient ObjectOutputStream writeStream;
     private transient ObjectInputStream readStream;
+    private byte[] iv = new byte[16];
+
+    public void setIv(byte[] iv){
+        this.iv = iv;
+    }
 
     public ChatView(Socket clientSocket, @NotNull Socket serverSocket, String destPath) throws HeadlessException {
         setTitle("Chat");
@@ -33,7 +53,7 @@ public class ChatView extends JFrame implements ActionListener {
         sendButton.addActionListener(this);
         field.addActionListener(this);
         fileButton.addActionListener(this);
-
+        iv = GeneratorOfKeys.generateIv();
         try {
             writeStream = new ObjectOutputStream(clientSocket.getOutputStream());
             readStream = new ObjectInputStream(serverSocket.getInputStream());
@@ -41,7 +61,7 @@ public class ChatView extends JFrame implements ActionListener {
             ex.printStackTrace();
         }
         MessageBoard board = new MessageBoard();
-        Thread listener = new Thread(new ListenerThread(readStream, writeStream, board, destPath, this));
+        Thread listener = new Thread(new ListenerThread(readStream, writeStream, board, destPath, this, this, ""));
         Thread appender = new Thread(new AppenderThread(board, chatArea));
         listener.start();
         appender.start();
@@ -57,8 +77,13 @@ public class ChatView extends JFrame implements ActionListener {
                 chatArea.append("\n");
                 chatArea.append("[me]: " + message);
                 field.setText("");
-                writeStream.writeObject(message);
-            } catch (IOException ex) {
+                SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
+                IvParameterSpec ivSpec = new IvParameterSpec(iv);
+                message = Cryptography.encrypt("AES/CBC/PKCS5Padding", message, key, ivSpec);
+                Message msg = new Message(1,  message, iv);
+                writeStream.writeObject(msg);
+            } catch (IOException | InvalidKeySpecException | NoSuchPaddingException| NoSuchAlgorithmException |
+                    InvalidAlgorithmParameterException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException ex) {
                 ex.printStackTrace();
             }
         } else if (e.getSource() == fileButton) {
@@ -75,11 +100,6 @@ public class ChatView extends JFrame implements ActionListener {
             } else {
                 return;
             }
-//            if (!extension.equalsIgnoreCase("txt") && !extension.equalsIgnoreCase("pdf")
-//                    && !extension.equalsIgnoreCase("png") && !extension.equalsIgnoreCase("avi")) {
-//                JOptionPane.showMessageDialog(this, "Bad format");
-//                return;
-//            }
             sendFileWithProgressBar(file, extension);
         }
     }
@@ -105,16 +125,26 @@ public class ChatView extends JFrame implements ActionListener {
     private void sendFileWithProgressBar(@NotNull File file, String extension){
         try (InputStream in = new FileInputStream(file.getPath())) {
             writeStream.flush();
-            writeStream.writeObject(Map.of("ext", extension));
+            writeStream.writeObject(new Message(3, extension));
             ProgressBar pb = new ProgressBar((int) file.length());
             pb.setVisible(true);
-
             int val = 0;
             int c;
             byte[] bytes = new byte[1024];
-            writeStream.writeObject(bytes); // sample
+
+            SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
+            IvParameterSpec ivSpec = new IvParameterSpec(iv);
+            byte[] ciphered;
+            writeStream.writeObject(new Message(4, bytes, iv)); // sample
             while ((c = in.read(bytes)) != -1) {
-                writeStream.write(bytes, 0, 1024);
+
+                //writeStream.write(bytes, 0, 1024);
+                //
+                // ciphered = Cryptography.encryptBytes("AES/CBC/PKCS5Padding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec);
+
+                ciphered = Cryptography.encryptBytes("AES/CBC/NoPadding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec); //wysypuje sie bo byl padding
+                System.out.println(new String(ciphered));
+                writeStream.writeObject(new Message(4, ciphered, iv));
                 val += c;
                 pb.getJb().setValue(val);
                 pb.update(pb.getGraphics());
@@ -123,7 +153,8 @@ public class ChatView extends JFrame implements ActionListener {
             chatArea.append("\n[me]: File sent -> " + file.getName());
             pb.setVisible(false);
             pb.dispose();
-        } catch (IOException ex) {
+        } catch (IOException | InvalidKeySpecException | NoSuchPaddingException| NoSuchAlgorithmException |
+                InvalidAlgorithmParameterException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException ex) {
             ex.printStackTrace();
         }
     }
