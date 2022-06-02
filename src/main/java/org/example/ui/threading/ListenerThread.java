@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import java.io.*;
+import java.util.Map;
 import java.util.Random;
 
 @RequiredArgsConstructor
@@ -16,6 +17,7 @@ public class ListenerThread implements Runnable {
     private final String destPath;
     private final JFrame window;
     private final Random random = new Random();
+    private String extension = "";
 
     @Override
     public void run() {
@@ -28,7 +30,13 @@ public class ListenerThread implements Runnable {
                 } else if (message instanceof char[]) {
                     String tmp = new String((char[]) message);
                     JOptionPane.showMessageDialog(window, "[Other guy]: " + tmp, "Notification", JOptionPane.INFORMATION_MESSAGE);
-                } else if (message instanceof byte[]) {
+                }
+                else if(message instanceof Map){
+                    Map<String, String> map = (Map<String, String>) message;
+                    extension = map.get("ext");
+                }
+
+                else if (message instanceof byte[]) {
                     //czesc pliku
                     byte[] buff = new byte[1024];
                     int i = 1;
@@ -38,7 +46,7 @@ public class ListenerThread implements Runnable {
                         outputStream.writeBytes(buff);
                     }
                     byte[] fileOut = outputStream.toByteArray();
-                    String extension = decideExtension(fileOut);
+                    //String extension = decideExtension(fileOut);
                     File tmp = new File(destPath + random.nextInt() + extension);
                     try (OutputStream os = new FileOutputStream(tmp)) {
                         os.write(fileOut);

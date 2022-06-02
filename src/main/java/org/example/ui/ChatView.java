@@ -11,6 +11,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 
 public class ChatView extends JFrame implements ActionListener {
     final Container container = getContentPane();
@@ -69,16 +71,16 @@ public class ChatView extends JFrame implements ActionListener {
             int dotIndex = file.toString().lastIndexOf('.');
             String extension;
             if (dotIndex > 0) {
-                extension = file.toString().substring(dotIndex + 1);
+                extension = file.toString().substring(dotIndex);
             } else {
                 return;
             }
-            if (!extension.equalsIgnoreCase("txt") && !extension.equalsIgnoreCase("pdf")
-                    && !extension.equalsIgnoreCase("png") && !extension.equalsIgnoreCase("avi")) {
-                JOptionPane.showMessageDialog(this, "Bad format");
-                return;
-            }
-            sendFileWithProgressBar(file);
+//            if (!extension.equalsIgnoreCase("txt") && !extension.equalsIgnoreCase("pdf")
+//                    && !extension.equalsIgnoreCase("png") && !extension.equalsIgnoreCase("avi")) {
+//                JOptionPane.showMessageDialog(this, "Bad format");
+//                return;
+//            }
+            sendFileWithProgressBar(file, extension);
         }
     }
 
@@ -100,9 +102,10 @@ public class ChatView extends JFrame implements ActionListener {
         container.add(fileButton);
     }
 
-    private void sendFileWithProgressBar(File file){
+    private void sendFileWithProgressBar(@NotNull File file, String extension){
         try (InputStream in = new FileInputStream(file.getPath())) {
             writeStream.flush();
+            writeStream.writeObject(Map.of("ext", extension));
             ProgressBar pb = new ProgressBar((int) file.length());
             pb.setVisible(true);
 
