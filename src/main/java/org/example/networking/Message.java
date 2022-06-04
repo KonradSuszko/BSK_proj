@@ -9,7 +9,7 @@ public class Message implements Serializable {
     // 1 - wiadomosc CBC
     // 2 - powiadomienie
     // 3 - rozszerzenie
-    private MessageType type;
+    private final MessageType type;
     private String text;
     private byte[] data;
     private byte[] iv;

@@ -1,19 +1,17 @@
 package org.example.ui.threading;
 
 import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
-import net.sf.jmimemagic.*;
 import org.example.networking.MessageType;
 import org.example.ui.ChatView;
-import org.jetbrains.annotations.NotNull;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.swing.*;
 import java.io.*;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Random;
+import java.util.logging.Logger;
+
 import org.example.networking.Message;
 import org.example.cryptography.*;
 
@@ -27,7 +25,7 @@ public class ListenerThread implements Runnable {
     private final JFrame window;
     private final Random random = new Random();
     private ChatView chatView;
-    private String extension = "";
+    private String extension;
 
     @Override
     public void run() {
@@ -37,68 +35,41 @@ public class ListenerThread implements Runnable {
                 if (message != null) {
                     SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
                     switch (message.getType()) {
-                        case CBC_MESSAGE:
-                            System.out.println(message.getIv().toString());
+                        case CBC_MESSAGE -> {
                             String msg = Cryptography.decrypt("AES/CBC/PKCS5Padding", message.getText(), key, new IvParameterSpec(message.getIv()));
                             board.put(msg);
                             chatView.setIv(Arrays.copyOfRange(message.getText().getBytes(), 0, 16));
-                            break;
-                        case NOTIFY:
-                            JOptionPane.showMessageDialog(window, "[Other guy]: " + message.getText(), "Notification", JOptionPane.INFORMATION_MESSAGE);
-                            break;
-                        case EXTENSION:
-                            extension = message.getText();
-                            break;
-                        case CBC_FILE:
-                            byte[] buff = new byte[1024];
-                            int i = 1;
+                        }
+                        case NOTIFY -> JOptionPane.showMessageDialog(window, "[Other guy]: " + message.getText(), "Notification", JOptionPane.INFORMATION_MESSAGE);
+                        case EXTENSION -> extension = message.getText();
+                        case CBC_FILE -> {
+                            byte[] buff;
                             Message obj;
                             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                            System.out.println("received");
-                            while (i != -1) {
-                                //i = readStream.read(buff);
-                                obj = (Message)readStream.readObject();
-                                if (obj == null)
+                            while (true) {
+                                obj = (Message) readStream.readObject();
+                                if (obj == null) {
                                     break;
-                                System.out.println(new String(obj.getData()));
+                                }
                                 buff = Cryptography.decryptBytes("AES/CBC/NoPadding", obj.getData(), key, new IvParameterSpec(message.getIv()));
-                                //chatView.setIv(Arrays.copyOfRange(message.getText().getBytes(), 0, 16));
-                                //outputStream.writeBytes(buff);
-
-                                //outputStream.writeBytes(obj.getData());
                                 outputStream.writeBytes(buff);
                             }
                             byte[] fileOut = outputStream.toByteArray();
-                            System.out.println();
-                            System.out.println(new String(fileOut));
-                            //String extension = decideExtension(fileOut);
                             File tmp = new File(destPath + random.nextInt() + extension);
                             try (OutputStream os = new FileOutputStream(tmp)) {
                                 os.write(fileOut);
                             }
                             board.put("Sent you file -> " + tmp.getName());
                             writeStream.writeObject(new Message(MessageType.NOTIFY, "File received"));
-                            break;
+                        }
+                        case SESSION_KEY_NEGOTIATION -> {
+
+                        }
                     }
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-    }
-
-    private @NotNull String decideExtension(byte[] file) throws MagicMatchNotFoundException, MagicException, MagicParseException {
-        MagicMatch match = Magic.getMagicMatch(file);
-        String mime = match.getMimeType();
-        if (mime.equalsIgnoreCase("text/plain")) {
-            return ".txt";
-        } else if (mime.equalsIgnoreCase("application/pdf")) {
-            return ".pdf";
-        } else if (mime.equalsIgnoreCase("image/png")) {
-            return ".png";
-        } else if (mime.equalsIgnoreCase("???")) {
-            return ".avi";
-        }
-        return "";
     }
 }

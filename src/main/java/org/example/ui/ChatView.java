@@ -1,7 +1,6 @@
 package org.example.ui;
 
 import lombok.Getter;
-import lombok.Setter;
 import org.example.networking.MessageType;
 import org.example.ui.threading.AppenderThread;
 import org.example.ui.threading.ListenerThread;
@@ -24,8 +23,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 import org.example.networking.Message;
 import org.example.cryptography.*;
 
@@ -39,7 +36,7 @@ public class ChatView extends JFrame implements ActionListener {
     final JButton fileButton = new JButton("FILE");
     private transient ObjectOutputStream writeStream;
     private transient ObjectInputStream readStream;
-    private byte[] iv = new byte[16];
+    private byte[] iv;
 
     public void setIv(byte[] iv){
         this.iv = iv;
