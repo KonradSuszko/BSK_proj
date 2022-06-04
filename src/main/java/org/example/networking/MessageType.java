@@ -5,5 +5,7 @@ public enum MessageType {
     NOTIFY,
     EXTENSION,
     CBC_FILE,
-    SESSION_KEY_NEGOTIATION
+    KEY_REQUEST,
+    KEY_RESPONSE,
+    SESSION_ID
 }

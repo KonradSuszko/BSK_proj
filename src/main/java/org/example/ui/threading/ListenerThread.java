@@ -1,19 +1,24 @@
 package org.example.ui.threading;
 
 import lombok.AllArgsConstructor;
+import org.example.cryptography.Cryptography;
+import org.example.cryptography.GeneratorOfKeys;
+import org.example.networking.Message;
 import org.example.networking.MessageType;
 import org.example.ui.ChatView;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.swing.*;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.security.KeyPair;
 import java.util.Arrays;
 import java.util.Random;
-import java.util.logging.Logger;
-
-import org.example.networking.Message;
-import org.example.cryptography.*;
 
 
 @AllArgsConstructor
@@ -26,12 +31,14 @@ public class ListenerThread implements Runnable {
     private final Random random = new Random();
     private ChatView chatView;
     private String extension;
+    private KeyPair keyPair;
+    private KeyBoard keyBoard;
 
     @Override
     public void run() {
         while (!Thread.interrupted()) {
             try {
-                Message message = (Message)readStream.readObject();
+                Message message = (Message) readStream.readObject();
                 if (message != null) {
                     SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
                     switch (message.getType()) {
@@ -62,8 +69,20 @@ public class ListenerThread implements Runnable {
                             board.put("Sent you file -> " + tmp.getName());
                             writeStream.writeObject(new Message(MessageType.NOTIFY, "File received"));
                         }
-                        case SESSION_KEY_NEGOTIATION -> {
-
+                        case KEY_REQUEST -> {
+                            System.out.println("got key request");
+                            var msg = new Message(MessageType.KEY_RESPONSE, keyPair.getPublic());
+                            writeStream.writeObject(msg);
+                        }
+                        case KEY_RESPONSE -> {
+                            System.out.println("got key response");
+                            keyBoard.put(message.getPk());
+                            chatView.setOtherPublicKey(message.getPk());
+                        }
+                        case SESSION_ID -> {
+                            String sessionKey = Cryptography.decryptWithRSA(keyPair.getPrivate(), message.getText());
+                            chatView.setSessionKey(sessionKey);
+                            System.out.println("SESSION KEY: " + sessionKey);
                         }
                     }
                 }

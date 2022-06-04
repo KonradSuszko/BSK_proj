@@ -11,6 +11,7 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.security.KeyPair;
 
 public class LoginView extends JFrame implements ActionListener {
     final Container container = getContentPane();
@@ -20,14 +21,16 @@ public class LoginView extends JFrame implements ActionListener {
     final JTextField otherPortField = new JTextField();
     final JButton connectButton = new JButton("CONNECT");
     private final String destPath;
+    KeyPair keys;
 
-    public LoginView(String destPath) throws HeadlessException {
+    public LoginView(String destPath, KeyPair keys) throws HeadlessException {
         setTitle("Connection screen");
         container.setLayout(null);
         setLocationAndSize();
         addComponentsToContainer();
         connectButton.addActionListener(this);
         this.destPath = destPath;
+        this.keys = keys;
     }
 
     private static @NotNull Socket getSocket(int port) throws IOException {
@@ -50,7 +53,7 @@ public class LoginView extends JFrame implements ActionListener {
                 initChat(clientSocket, serverSocket);
             } catch (IllegalThreadStateException exception) {
                 JOptionPane.showMessageDialog(this, "Something wrong I can feel it");
-            } catch (InterruptedException exception){
+            } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
             }
         }
@@ -73,7 +76,7 @@ public class LoginView extends JFrame implements ActionListener {
     }
 
     private void initChat(Socket client, Socket server) {
-        ChatView chatView = new ChatView(client, server, destPath);
+        ChatView chatView = new ChatView(client, server, destPath, keys);
         chatView.setSize(700, 700);
         chatView.setVisible(true);
         chatView.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -83,11 +86,11 @@ public class LoginView extends JFrame implements ActionListener {
     private Socket getClientSocket(int otherPort, ServerThread thread) throws IllegalThreadStateException, InterruptedException {
         Socket clientSocket;
         int time = 5;
-        while(true) {
+        while (true) {
             try {
                 clientSocket = getSocket(otherPort);
                 break;
-            } catch(IOException ex){
+            } catch (IOException ex) {
                 Thread.sleep(1000);
                 time -= 1;
                 if (time == 0) {

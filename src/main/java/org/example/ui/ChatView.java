@@ -1,8 +1,13 @@
 package org.example.ui;
 
 import lombok.Getter;
+import lombok.Setter;
+import org.example.cryptography.Cryptography;
+import org.example.cryptography.GeneratorOfKeys;
+import org.example.networking.Message;
 import org.example.networking.MessageType;
 import org.example.ui.threading.AppenderThread;
+import org.example.ui.threading.KeyBoard;
 import org.example.ui.threading.ListenerThread;
 import org.example.ui.threading.MessageBoard;
 import org.jetbrains.annotations.NotNull;
@@ -16,15 +21,21 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
-import org.example.networking.Message;
-import org.example.cryptography.*;
+import java.util.UUID;
 
 @Getter
 public class ChatView extends JFrame implements ActionListener {
@@ -34,15 +45,17 @@ public class ChatView extends JFrame implements ActionListener {
     final JTextField field = new JTextField();
     final JButton sendButton = new JButton("SEND");
     final JButton fileButton = new JButton("FILE");
+    private final KeyPair keys;
+    private final transient KeyBoard keyBoard = new KeyBoard();
     private transient ObjectOutputStream writeStream;
     private transient ObjectInputStream readStream;
     private byte[] iv;
+    @Setter
+    private String sessionKey = null;
+    @Setter
+    private PublicKey otherPublicKey = null;
 
-    public void setIv(byte[] iv){
-        this.iv = iv;
-    }
-
-    public ChatView(Socket clientSocket, @NotNull Socket serverSocket, String destPath) throws HeadlessException {
+    public ChatView(@NotNull Socket clientSocket, @NotNull Socket serverSocket, String destPath, KeyPair keys) throws HeadlessException {
         setTitle("Chat");
         container.setLayout(null);
         setLocationAndSize();
@@ -52,6 +65,7 @@ public class ChatView extends JFrame implements ActionListener {
         field.addActionListener(this);
         fileButton.addActionListener(this);
         iv = GeneratorOfKeys.generateIv();
+        this.keys = keys;
         try {
             writeStream = new ObjectOutputStream(clientSocket.getOutputStream());
             readStream = new ObjectInputStream(serverSocket.getInputStream());
@@ -59,14 +73,28 @@ public class ChatView extends JFrame implements ActionListener {
             ex.printStackTrace();
         }
         MessageBoard board = new MessageBoard();
-        Thread listener = new Thread(new ListenerThread(readStream, writeStream, board, destPath, this, this, ""));
+        Thread listener = new Thread(new ListenerThread(
+                readStream,
+                writeStream,
+                board,
+                destPath,
+                this,
+                this,
+                "",
+                keys,
+                keyBoard
+        ));
         Thread appender = new Thread(new AppenderThread(board, chatArea));
         listener.start();
         appender.start();
     }
 
+    public void setIv(byte[] iv) {
+        this.iv = iv;
+    }
+
     @Override
-    public void actionPerformed(ActionEvent e) {
+    public void actionPerformed(@NotNull ActionEvent e) {
         if (e.getSource() == sendButton || e.getSource() == field) {
             try {
                 assert writeStream != null;
@@ -78,10 +106,10 @@ public class ChatView extends JFrame implements ActionListener {
                 SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
                 IvParameterSpec ivSpec = new IvParameterSpec(iv);
                 message = Cryptography.encrypt("AES/CBC/PKCS5Padding", message, key, ivSpec);
-                Message msg = new Message(MessageType.CBC_MESSAGE,  message, iv);
+                Message msg = new Message(MessageType.CBC_MESSAGE, message, iv);
+                ensureSessionKey();
                 writeStream.writeObject(msg);
-            } catch (IOException | InvalidKeySpecException | NoSuchPaddingException| NoSuchAlgorithmException |
-                    InvalidAlgorithmParameterException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException ex) {
+            } catch (Exception ex) {
                 ex.printStackTrace();
             }
         } else if (e.getSource() == fileButton) {
@@ -98,7 +126,12 @@ public class ChatView extends JFrame implements ActionListener {
             } else {
                 return;
             }
-            sendFileWithProgressBar(file, extension);
+            try {
+                ensureSessionKey();
+                sendFileWithProgressBar(file, extension);
+            } catch (Exception ex) {
+                System.err.println(ex.getMessage());
+            }
         }
     }
 
@@ -120,7 +153,7 @@ public class ChatView extends JFrame implements ActionListener {
         container.add(fileButton);
     }
 
-    private void sendFileWithProgressBar(@NotNull File file, String extension){
+    private void sendFileWithProgressBar(@NotNull File file, String extension) {
         try (InputStream in = new FileInputStream(file.getPath())) {
             writeStream.flush();
             writeStream.writeObject(new Message(MessageType.EXTENSION, extension));
@@ -151,9 +184,23 @@ public class ChatView extends JFrame implements ActionListener {
             chatArea.append("\n[me]: File sent -> " + file.getName());
             pb.setVisible(false);
             pb.dispose();
-        } catch (IOException | InvalidKeySpecException | NoSuchPaddingException| NoSuchAlgorithmException |
+        } catch (IOException | InvalidKeySpecException | NoSuchPaddingException | NoSuchAlgorithmException |
                 InvalidAlgorithmParameterException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException ex) {
             ex.printStackTrace();
+        }
+    }
+
+    private void ensureSessionKey() throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InterruptedException {
+        if (sessionKey == null) {
+            Message message1 = new Message(MessageType.KEY_REQUEST);
+            writeStream.writeObject(message1);
+            System.out.println("Waiting for response...");
+            otherPublicKey = keyBoard.take();
+            sessionKey = UUID.randomUUID().toString();
+            String encryptedSessionKey = Cryptography.encryptWithRSA(otherPublicKey, sessionKey);
+            Message message2 = new Message(MessageType.SESSION_ID, encryptedSessionKey);
+            writeStream.writeObject(message2);
+            System.out.printf("Session key: %s%n", sessionKey);
         }
     }
 }
