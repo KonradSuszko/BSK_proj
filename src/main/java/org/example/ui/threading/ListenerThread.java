@@ -3,6 +3,7 @@ package org.example.ui.threading;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import net.sf.jmimemagic.*;
+import org.example.networking.MessageType;
 import org.example.ui.ChatView;
 import org.jetbrains.annotations.NotNull;
 
@@ -36,19 +37,19 @@ public class ListenerThread implements Runnable {
                 if (message != null) {
                     SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
                     switch (message.getType()) {
-                        case 1:
+                        case CBC_MESSAGE:
                             System.out.println(message.getIv().toString());
                             String msg = Cryptography.decrypt("AES/CBC/PKCS5Padding", message.getText(), key, new IvParameterSpec(message.getIv()));
                             board.put(msg);
                             chatView.setIv(Arrays.copyOfRange(message.getText().getBytes(), 0, 16));
                             break;
-                        case 2:
+                        case NOTIFY:
                             JOptionPane.showMessageDialog(window, "[Other guy]: " + message.getText(), "Notification", JOptionPane.INFORMATION_MESSAGE);
                             break;
-                        case 3:
+                        case EXTENSION:
                             extension = message.getText();
                             break;
-                        case 4:
+                        case CBC_FILE:
                             byte[] buff = new byte[1024];
                             int i = 1;
                             Message obj;
@@ -76,7 +77,7 @@ public class ListenerThread implements Runnable {
                                 os.write(fileOut);
                             }
                             board.put("Sent you file -> " + tmp.getName());
-                            writeStream.writeObject(new Message(2, "File received"));
+                            writeStream.writeObject(new Message(MessageType.NOTIFY, "File received"));
                             break;
                     }
                 }

@@ -2,6 +2,7 @@ package org.example.ui;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.example.networking.MessageType;
 import org.example.ui.threading.AppenderThread;
 import org.example.ui.threading.ListenerThread;
 import org.example.ui.threading.MessageBoard;
@@ -80,7 +81,7 @@ public class ChatView extends JFrame implements ActionListener {
                 SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
                 IvParameterSpec ivSpec = new IvParameterSpec(iv);
                 message = Cryptography.encrypt("AES/CBC/PKCS5Padding", message, key, ivSpec);
-                Message msg = new Message(1,  message, iv);
+                Message msg = new Message(MessageType.CBC_MESSAGE,  message, iv);
                 writeStream.writeObject(msg);
             } catch (IOException | InvalidKeySpecException | NoSuchPaddingException| NoSuchAlgorithmException |
                     InvalidAlgorithmParameterException | InvalidKeyException | BadPaddingException | IllegalBlockSizeException ex) {
@@ -125,7 +126,7 @@ public class ChatView extends JFrame implements ActionListener {
     private void sendFileWithProgressBar(@NotNull File file, String extension){
         try (InputStream in = new FileInputStream(file.getPath())) {
             writeStream.flush();
-            writeStream.writeObject(new Message(3, extension));
+            writeStream.writeObject(new Message(MessageType.EXTENSION, extension));
             ProgressBar pb = new ProgressBar((int) file.length());
             pb.setVisible(true);
             int val = 0;
@@ -135,7 +136,7 @@ public class ChatView extends JFrame implements ActionListener {
             SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
             IvParameterSpec ivSpec = new IvParameterSpec(iv);
             byte[] ciphered;
-            writeStream.writeObject(new Message(4, bytes, iv)); // sample
+            writeStream.writeObject(new Message(MessageType.CBC_FILE, bytes, iv)); // sample
             while ((c = in.read(bytes)) != -1) {
 
                 //writeStream.write(bytes, 0, 1024);
@@ -144,7 +145,7 @@ public class ChatView extends JFrame implements ActionListener {
 
                 ciphered = Cryptography.encryptBytes("AES/CBC/NoPadding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec); //wysypuje sie bo byl padding
                 System.out.println(new String(ciphered));
-                writeStream.writeObject(new Message(4, ciphered, iv));
+                writeStream.writeObject(new Message(MessageType.CBC_FILE, ciphered, iv));
                 val += c;
                 pb.getJb().setValue(val);
                 pb.update(pb.getGraphics());

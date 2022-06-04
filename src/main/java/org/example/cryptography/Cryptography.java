@@ -1,15 +1,26 @@
 package org.example.cryptography;
 
-import javax.crypto.*;
+import lombok.experimental.UtilityClass;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
+@UtilityClass
 public class Cryptography {
-    public static String encrypt(String algorithm, String input, SecretKey key, IvParameterSpec iv)
+    public static String encrypt(String algorithm, @NotNull String input, SecretKey key, IvParameterSpec iv)
             throws NoSuchPaddingException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, InvalidKeyException,
             BadPaddingException, IllegalBlockSizeException {
@@ -31,7 +42,8 @@ public class Cryptography {
         return Base64.getEncoder().encode(cipherText);
     }
 
-    public static String decrypt(String algorithm, String cipherText, SecretKey key, IvParameterSpec iv)
+    @Contract ("_, _, _, _ -> new")
+    public static @NotNull String decrypt(String algorithm, String cipherText, SecretKey key, IvParameterSpec iv)
             throws NoSuchPaddingException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, InvalidKeyException,
             BadPaddingException, IllegalBlockSizeException {
@@ -53,7 +65,7 @@ public class Cryptography {
     }
 
     public static void encryptFile(String algorithm, SecretKey key, IvParameterSpec iv,
-                                   ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
+                                   @NotNull ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException,
             BadPaddingException, IllegalBlockSizeException {
 
@@ -76,7 +88,7 @@ public class Cryptography {
     }
 
     public static void decryptFile(String algorithm, SecretKey key, IvParameterSpec iv,
-                                   ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
+                                   @NotNull ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException,
             BadPaddingException, IllegalBlockSizeException {
 
