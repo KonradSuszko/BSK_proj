@@ -46,6 +46,8 @@ public class ChatView extends JFrame implements ActionListener {
     final JTextField field = new JTextField();
     final JButton sendButton = new JButton("SEND");
     final JButton fileButton = new JButton("FILE");
+    final JRadioButton ecbRadio = new JRadioButton("ECB", true);
+    final JRadioButton cbcRadio = new JRadioButton("CBC");
     private final KeyPair keys;
     private final transient KeyBoard keyBoard = new KeyBoard();
     private transient ObjectOutputStream writeStream;
@@ -118,9 +120,16 @@ public class ChatView extends JFrame implements ActionListener {
                 ensureSessionKey();
                 SecretKey key = GeneratorOfKeys.getKeyFromPassword(sessionKey, "2137");
                 IvParameterSpec ivSpec = new IvParameterSpec(iv);
-                message = Cryptography.encrypt("AES/CBC/PKCS5Padding", message, key, ivSpec);
-                Message msg = new Message(MessageType.CBC_MESSAGE, message, iv);
-                writeStream.writeObject(msg);
+                if(cbcRadio.isSelected()) {
+                    message = Cryptography.encrypt("AES/CBC/PKCS5Padding", message, key, ivSpec);
+                    Message msg = new Message(MessageType.CBC_MESSAGE, message, iv);
+                    writeStream.writeObject(msg);
+                }
+                else{
+                    message = Cryptography.encrypt("AES/ECB/PKCS5Padding", message, key, null);
+                    Message msg = new Message(MessageType.ECB_MESSAGE, message, iv);
+                    writeStream.writeObject(msg);
+                }
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
@@ -148,10 +157,12 @@ public class ChatView extends JFrame implements ActionListener {
     }
 
     private void setLocationAndSize() {
+        ecbRadio.setBounds(300, 10, 70, 70);
+        cbcRadio.setBounds(400, 10, 70, 70);
         field.setBounds(0, 525, 525, 175);
         fileButton.setBounds(525, 525, 75, 175);
         sendButton.setBounds(600, 525, 100, 175);
-        scrollPane.setBounds(0, 0, 700, 525);
+        scrollPane.setBounds(0, 100, 700, 400);
 
         chatArea.setColumns(20);
         chatArea.setRows(5);
@@ -163,6 +174,11 @@ public class ChatView extends JFrame implements ActionListener {
         container.add(field);
         container.add(sendButton);
         container.add(fileButton);
+        ButtonGroup group = new ButtonGroup();
+        group.add(ecbRadio);
+        group.add(cbcRadio);
+        container.add(ecbRadio);
+        container.add(cbcRadio);
     }
 
     private void sendFileWithProgressBar(@NotNull File file, String extension) {
@@ -178,16 +194,27 @@ public class ChatView extends JFrame implements ActionListener {
             SecretKey key = GeneratorOfKeys.getKeyFromPassword(sessionKey, "2137");
             IvParameterSpec ivSpec = new IvParameterSpec(iv);
             byte[] ciphered;
-            writeStream.writeObject(new Message(MessageType.CBC_FILE, bytes, iv)); // sample
+            if(cbcRadio.isSelected()) {
+                writeStream.writeObject(new Message(MessageType.CBC_FILE, bytes, iv)); // sample
+            }
+            else{
+                writeStream.writeObject(new Message(MessageType.ECB_FILE, bytes, iv));
+            }
             while ((c = in.read(bytes)) != -1) {
 
                 //writeStream.write(bytes, 0, 1024);
                 //
                 // ciphered = Cryptography.encryptBytes("AES/CBC/PKCS5Padding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec);
 
-                ciphered = Cryptography.encryptBytes("AES/CBC/NoPadding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec); //wysypuje sie bo byl padding
-                System.out.println(new String(ciphered));
-                writeStream.writeObject(new Message(MessageType.CBC_FILE, ciphered, iv));
+                if(cbcRadio.isSelected()) {
+                    ciphered = Cryptography.encryptBytes("AES/CBC/NoPadding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec); //wysypuje sie bo byl padding
+                    System.out.println(new String(ciphered));
+                    writeStream.writeObject(new Message(MessageType.CBC_FILE, ciphered, iv));
+                }
+                else{
+                    ciphered = Cryptography.encryptBytes("AES/ECB/PKCS5Padding", Arrays.copyOfRange(bytes, 0, 1024), key, null);
+                    writeStream.writeObject(new Message(MessageType.ECB_FILE, ciphered, iv));
+                }
                 val += c;
                 pb.getJb().setValue(val);
                 pb.update(pb.getGraphics());
