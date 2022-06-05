@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.example.cryptography.Cryptography;
 import org.example.cryptography.GeneratorOfKeys;
+import org.example.cryptography.RSAUtils;
 import org.example.networking.Message;
 import org.example.networking.MessageType;
 import org.example.ui.threading.AppenderThread;
@@ -54,8 +55,11 @@ public class ChatView extends JFrame implements ActionListener {
     private String sessionKey = null;
     @Setter
     private PublicKey otherPublicKey = null;
+    private String password;
+    private String privateKeyPath;
+    private String publicKeyPath;
 
-    public ChatView(@NotNull Socket clientSocket, @NotNull Socket serverSocket, String destPath, KeyPair keys) throws HeadlessException {
+    public ChatView(@NotNull Socket clientSocket, @NotNull Socket serverSocket, String destPath, String privateKeyPath, String publicKeyPath, String password) throws HeadlessException {
         setTitle("Chat");
         container.setLayout(null);
         setLocationAndSize();
@@ -65,7 +69,15 @@ public class ChatView extends JFrame implements ActionListener {
         field.addActionListener(this);
         fileButton.addActionListener(this);
         iv = GeneratorOfKeys.generateIv();
-        this.keys = keys;
+        this.password = password;
+        this.privateKeyPath = privateKeyPath;
+        this.publicKeyPath = publicKeyPath;
+        try {
+            this.keys = RSAUtils.initialize(privateKeyPath, publicKeyPath, password);
+        } catch (Exception ex){
+            System.err.println("Wrong password");
+            throw new RuntimeException("Wrong password");
+        }
         try {
             writeStream = new ObjectOutputStream(clientSocket.getOutputStream());
             readStream = new ObjectInputStream(serverSocket.getInputStream());
@@ -103,11 +115,11 @@ public class ChatView extends JFrame implements ActionListener {
                 chatArea.append("\n");
                 chatArea.append("[me]: " + message);
                 field.setText("");
-                SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
+                ensureSessionKey();
+                SecretKey key = GeneratorOfKeys.getKeyFromPassword(sessionKey, "2137");
                 IvParameterSpec ivSpec = new IvParameterSpec(iv);
                 message = Cryptography.encrypt("AES/CBC/PKCS5Padding", message, key, ivSpec);
                 Message msg = new Message(MessageType.CBC_MESSAGE, message, iv);
-                ensureSessionKey();
                 writeStream.writeObject(msg);
             } catch (Exception ex) {
                 ex.printStackTrace();
@@ -163,7 +175,7 @@ public class ChatView extends JFrame implements ActionListener {
             int c;
             byte[] bytes = new byte[1024];
 
-            SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
+            SecretKey key = GeneratorOfKeys.getKeyFromPassword(sessionKey, "2137");
             IvParameterSpec ivSpec = new IvParameterSpec(iv);
             byte[] ciphered;
             writeStream.writeObject(new Message(MessageType.CBC_FILE, bytes, iv)); // sample
@@ -190,7 +202,7 @@ public class ChatView extends JFrame implements ActionListener {
         }
     }
 
-    private void ensureSessionKey() throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InterruptedException {
+    public void ensureSessionKey() throws IOException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, InvalidKeyException, InterruptedException {
         if (sessionKey == null) {
             Message message1 = new Message(MessageType.KEY_REQUEST);
             writeStream.writeObject(message1);

@@ -40,9 +40,9 @@ public class ListenerThread implements Runnable {
             try {
                 Message message = (Message) readStream.readObject();
                 if (message != null) {
-                    SecretKey key = GeneratorOfKeys.getKeyFromPassword("secret", "2137");
                     switch (message.getType()) {
                         case CBC_MESSAGE -> {
+                            SecretKey key = GeneratorOfKeys.getKeyFromPassword(chatView.getSessionKey(), "2137");
                             String msg = Cryptography.decrypt("AES/CBC/PKCS5Padding", message.getText(), key, new IvParameterSpec(message.getIv()));
                             board.put(msg);
                             chatView.setIv(Arrays.copyOfRange(message.getText().getBytes(), 0, 16));
@@ -50,6 +50,7 @@ public class ListenerThread implements Runnable {
                         case NOTIFY -> JOptionPane.showMessageDialog(window, "[Other guy]: " + message.getText(), "Notification", JOptionPane.INFORMATION_MESSAGE);
                         case EXTENSION -> extension = message.getText();
                         case CBC_FILE -> {
+                            SecretKey key = GeneratorOfKeys.getKeyFromPassword(chatView.getSessionKey(), "2137");
                             byte[] buff;
                             Message obj;
                             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
