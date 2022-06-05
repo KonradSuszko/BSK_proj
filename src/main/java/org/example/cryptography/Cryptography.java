@@ -1,15 +1,29 @@
 package org.example.cryptography;
 
-import javax.crypto.*;
+import lombok.experimental.UtilityClass;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Base64;
 
+@UtilityClass
 public class Cryptography {
-    public static String encrypt(String algorithm, String input, SecretKey key, IvParameterSpec iv)
+    public static String encrypt(String algorithm, @NotNull String input, SecretKey key, IvParameterSpec iv)
             throws NoSuchPaddingException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, InvalidKeyException,
             BadPaddingException, IllegalBlockSizeException {
@@ -31,7 +45,8 @@ public class Cryptography {
         return Base64.getEncoder().encode(cipherText);
     }
 
-    public static String decrypt(String algorithm, String cipherText, SecretKey key, IvParameterSpec iv)
+    @Contract ("_, _, _, _ -> new")
+    public static @NotNull String decrypt(String algorithm, String cipherText, SecretKey key, IvParameterSpec iv)
             throws NoSuchPaddingException, NoSuchAlgorithmException,
             InvalidAlgorithmParameterException, InvalidKeyException,
             BadPaddingException, IllegalBlockSizeException {
@@ -53,7 +68,7 @@ public class Cryptography {
     }
 
     public static void encryptFile(String algorithm, SecretKey key, IvParameterSpec iv,
-                                   ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
+                                   @NotNull ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException,
             BadPaddingException, IllegalBlockSizeException {
 
@@ -76,7 +91,7 @@ public class Cryptography {
     }
 
     public static void decryptFile(String algorithm, SecretKey key, IvParameterSpec iv,
-                                   ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
+                                   @NotNull ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
             NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException,
             BadPaddingException, IllegalBlockSizeException {
 
@@ -96,5 +111,20 @@ public class Cryptography {
         }
         inputStream.close();
         outputStream.close();
+    }
+
+    public static String encryptWithRSA(PublicKey key, @NotNull String content) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, key);
+        byte[] cipherText = cipher.doFinal(content.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(cipherText);
+    }
+
+    @Contract ("_, _ -> new")
+    public static @NotNull String decryptWithRSA(PrivateKey key, String cipherText) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.DECRYPT_MODE, key);
+        byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(cipherText));
+        return new String(decrypted);
     }
 }

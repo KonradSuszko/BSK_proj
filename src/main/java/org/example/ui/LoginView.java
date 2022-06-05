@@ -16,18 +16,24 @@ public class LoginView extends JFrame implements ActionListener {
     final Container container = getContentPane();
     final JLabel myPortLabel = new JLabel("MY PORT");
     final JLabel otherPortLabel = new JLabel("OTHER PORT");
+    final JLabel passwordLabel = new JLabel("PASSWORD");
     final JTextField myPortField = new JTextField();
     final JTextField otherPortField = new JTextField();
+    final JTextField passwordField = new JTextField();
     final JButton connectButton = new JButton("CONNECT");
     private final String destPath;
+    private final String privateKeyPath;
+    private final String publicKeyPath;
 
-    public LoginView(String destPath) throws HeadlessException {
+    public LoginView(String destPath, String privateKeyPath, String publicKeyPath) throws HeadlessException {
         setTitle("Connection screen");
         container.setLayout(null);
         setLocationAndSize();
         addComponentsToContainer();
         connectButton.addActionListener(this);
         this.destPath = destPath;
+        this.privateKeyPath = privateKeyPath;
+        this.publicKeyPath = publicKeyPath;
     }
 
     private static @NotNull Socket getSocket(int port) throws IOException {
@@ -41,16 +47,17 @@ public class LoginView extends JFrame implements ActionListener {
             try {
                 int myPort = Integer.parseInt(myPortField.getText());
                 int otherPort = Integer.parseInt(otherPortField.getText());
+                String password = passwordField.getText();
                 SocketBoard board = new SocketBoard();
                 ServerThread serverThread = new ServerThread(myPort, board);
                 serverThread.start();
                 Socket clientSocket = getClientSocket(otherPort, serverThread);
                 Socket serverSocket = board.take();
                 serverThread.interrupt();
-                initChat(clientSocket, serverSocket);
+                initChat(clientSocket, serverSocket, password);
             } catch (IllegalThreadStateException exception) {
                 JOptionPane.showMessageDialog(this, "Something wrong I can feel it");
-            } catch (InterruptedException exception){
+            } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
             }
         }
@@ -61,7 +68,9 @@ public class LoginView extends JFrame implements ActionListener {
         otherPortLabel.setBounds(50, 100, 100, 30);
         myPortField.setBounds(150, 50, 150, 30);
         otherPortField.setBounds(150, 100, 150, 30);
-        connectButton.setBounds(200, 150, 100, 30);
+        connectButton.setBounds(200, 200, 100, 30);
+        passwordLabel.setBounds(50, 150, 100, 30);
+        passwordField.setBounds(150, 150, 150, 30);
     }
 
     private void addComponentsToContainer() {
@@ -70,10 +79,12 @@ public class LoginView extends JFrame implements ActionListener {
         container.add(myPortField);
         container.add(otherPortField);
         container.add(connectButton);
+        container.add(passwordLabel);
+        container.add(passwordField);
     }
 
-    private void initChat(Socket client, Socket server) {
-        ChatView chatView = new ChatView(client, server, destPath);
+    private void initChat(Socket client, Socket server, String password) {
+        ChatView chatView = new ChatView(client, server, destPath, privateKeyPath, publicKeyPath, password);
         chatView.setSize(700, 700);
         chatView.setVisible(true);
         chatView.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
@@ -83,11 +94,11 @@ public class LoginView extends JFrame implements ActionListener {
     private Socket getClientSocket(int otherPort, ServerThread thread) throws IllegalThreadStateException, InterruptedException {
         Socket clientSocket;
         int time = 5;
-        while(true) {
+        while (true) {
             try {
                 clientSocket = getSocket(otherPort);
                 break;
-            } catch(IOException ex){
+            } catch (IOException ex) {
                 Thread.sleep(1000);
                 time -= 1;
                 if (time == 0) {

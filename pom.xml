@@ -32,6 +32,11 @@
             <version>23.0.0</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -51,6 +56,8 @@
                                 <mainClass>org.example.Main</mainClass>
                                 <arguments>
                                     <argument>src/main/resources/first/</argument>
+                                    <argument>src/main/resources/first/public/key.pub</argument>
+                                    <argument>src/main/resources/first/private/key.key</argument>
                                 </arguments>
                             </configuration>
                         </execution>
@@ -63,6 +70,8 @@
                                 <mainClass>org.example.Main</mainClass>
                                 <arguments>
                                     <argument>src/main/resources/second/</argument>
+                                    <argument>src/main/resources/second/public/key.pub</argument>
+                                    <argument>src/main/resources/second/private/key.key</argument>
                                 </arguments>
                             </configuration>
                         </execution>
