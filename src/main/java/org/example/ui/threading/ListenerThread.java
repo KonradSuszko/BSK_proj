@@ -64,7 +64,7 @@ public class ListenerThread implements Runnable {
                                 if (obj == null) {
                                     break;
                                 }
-                                buff = Cryptography.decryptBytes("AES/CBC/NoPadding", obj.getData(), key, null);
+                                buff = Cryptography.decryptBytes("AES/CBC/NoPadding", obj.getData(), key, new IvParameterSpec(message.getIv()));
                                 outputStream.writeBytes(buff);
                             }
                             byte[] fileOut = outputStream.toByteArray();
