@@ -34,9 +34,9 @@ import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
-import java.util.UUID;
 
 @Getter
 public class ChatView extends JFrame implements ActionListener {
@@ -50,6 +50,9 @@ public class ChatView extends JFrame implements ActionListener {
     final JRadioButton cbcRadio = new JRadioButton("CBC");
     private final KeyPair keys;
     private final transient KeyBoard keyBoard = new KeyBoard();
+    private final String password;
+    private final String privateKeyPath;
+    private final String publicKeyPath;
     private transient ObjectOutputStream writeStream;
     private transient ObjectInputStream readStream;
     private byte[] iv;
@@ -57,9 +60,6 @@ public class ChatView extends JFrame implements ActionListener {
     private String sessionKey = null;
     @Setter
     private PublicKey otherPublicKey = null;
-    private String password;
-    private String privateKeyPath;
-    private String publicKeyPath;
 
     public ChatView(@NotNull Socket clientSocket, @NotNull Socket serverSocket, String destPath, String privateKeyPath, String publicKeyPath, String password) throws HeadlessException {
         setTitle("Chat");
@@ -76,7 +76,7 @@ public class ChatView extends JFrame implements ActionListener {
         this.publicKeyPath = publicKeyPath;
         try {
             this.keys = RSAUtils.initialize(privateKeyPath, publicKeyPath, password);
-        } catch (Exception ex){
+        } catch (Exception ex) {
             System.err.println("Wrong password");
             throw new RuntimeException("Wrong password");
         }
@@ -120,12 +120,11 @@ public class ChatView extends JFrame implements ActionListener {
                 ensureSessionKey();
                 SecretKey key = GeneratorOfKeys.getKeyFromPassword(sessionKey, "2137");
                 IvParameterSpec ivSpec = new IvParameterSpec(iv);
-                if(cbcRadio.isSelected()) {
+                if (cbcRadio.isSelected()) {
                     message = Cryptography.encrypt("AES/CBC/PKCS5Padding", message, key, ivSpec);
                     Message msg = new Message(MessageType.CBC_MESSAGE, message, iv);
                     writeStream.writeObject(msg);
-                }
-                else{
+                } else {
                     message = Cryptography.encrypt("AES/ECB/PKCS5Padding", message, key, null);
                     Message msg = new Message(MessageType.ECB_MESSAGE, message, iv);
                     writeStream.writeObject(msg);
@@ -194,10 +193,9 @@ public class ChatView extends JFrame implements ActionListener {
             SecretKey key = GeneratorOfKeys.getKeyFromPassword(sessionKey, "2137");
             IvParameterSpec ivSpec = new IvParameterSpec(iv);
             byte[] ciphered;
-            if(cbcRadio.isSelected()) {
+            if (cbcRadio.isSelected()) {
                 writeStream.writeObject(new Message(MessageType.CBC_FILE, bytes, iv)); // sample
-            }
-            else{
+            } else {
                 writeStream.writeObject(new Message(MessageType.ECB_FILE, bytes, iv));
             }
             while ((c = in.read(bytes)) != -1) {
@@ -206,12 +204,11 @@ public class ChatView extends JFrame implements ActionListener {
                 //
                 // ciphered = Cryptography.encryptBytes("AES/CBC/PKCS5Padding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec);
 
-                if(cbcRadio.isSelected()) {
+                if (cbcRadio.isSelected()) {
                     ciphered = Cryptography.encryptBytes("AES/CBC/NoPadding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec); //wysypuje sie bo byl padding
                     System.out.println(new String(ciphered));
                     writeStream.writeObject(new Message(MessageType.CBC_FILE, ciphered, iv));
-                }
-                else{
+                } else {
                     ciphered = Cryptography.encryptBytes("AES/ECB/PKCS5Padding", Arrays.copyOfRange(bytes, 0, 1024), key, null);
                     writeStream.writeObject(new Message(MessageType.ECB_FILE, ciphered, iv));
                 }
@@ -235,7 +232,10 @@ public class ChatView extends JFrame implements ActionListener {
             writeStream.writeObject(message1);
             System.out.println("Waiting for response...");
             otherPublicKey = keyBoard.take();
-            sessionKey = UUID.randomUUID().toString();
+            SecureRandom secureRandom = SecureRandom.getInstance("SHA1PRNG");
+            byte[] sessionKeyBytes = new byte[128];
+            secureRandom.nextBytes(sessionKeyBytes);
+            sessionKey = new String(sessionKeyBytes);
             String encryptedSessionKey = Cryptography.encryptWithRSA(otherPublicKey, sessionKey);
             Message message2 = new Message(MessageType.SESSION_ID, encryptedSessionKey);
             writeStream.writeObject(message2);
