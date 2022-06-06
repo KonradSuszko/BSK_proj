@@ -14,12 +14,12 @@ public class ServerThread extends Thread {
     private ServerSocket ss;
     private Socket s;
 
-    public ServerThread(int port, SocketBoard board){
+    public ServerThread(int port, SocketBoard board) {
         this.port = port;
         this.board = board;
     }
 
-    public void kill() throws IOException{
+    public void kill() throws IOException {
         this.interrupt();
         if (s != null)
             s.close();

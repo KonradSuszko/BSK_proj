@@ -7,5 +7,7 @@ public enum MessageType {
     CBC_FILE,
     KEY_REQUEST,
     KEY_RESPONSE,
-    SESSION_ID
+    SESSION_ID,
+    ECB_MESSAGE,
+    ECB_FILE
 }
