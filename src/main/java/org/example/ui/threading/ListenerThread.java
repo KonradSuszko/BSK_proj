@@ -46,11 +46,13 @@ public class ListenerThread implements Runnable {
                             String msg = Cryptography.decrypt("AES/CBC/PKCS5Padding", message.getText(), key, new IvParameterSpec(message.getIv()));
                             board.put(msg);
                             chatView.setIv(Arrays.copyOfRange(message.getText().getBytes(), 0, 16));
+                            writeStream.writeObject(new Message(MessageType.NOTIFY, "Text message received"));
                         }
                         case ECB_MESSAGE -> {
                             SecretKey key = GeneratorOfKeys.getKeyFromPassword(chatView.getSessionKey(), "2137");
                             String msg = Cryptography.decrypt("AES/ECB/PKCS5Padding", message.getText(), key, null);
                             board.put(msg);
+                            writeStream.writeObject(new Message(MessageType.NOTIFY, "Text message received"));
                         }
                         case NOTIFY -> JOptionPane.showMessageDialog(window, "[Other guy]: " + message.getText(), "Notification", JOptionPane.INFORMATION_MESSAGE);
                         case EXTENSION -> extension = message.getText();
@@ -109,7 +111,7 @@ public class ListenerThread implements Runnable {
                         case SESSION_ID -> {
                             String sessionKey = Cryptography.decryptWithRSA(keyPair.getPrivate(), message.getText());
                             chatView.setSessionKey(sessionKey);
-                            System.out.println("SESSION KEY: " + sessionKey);
+                            System.out.println("Session key established");
                         }
                     }
                 }
