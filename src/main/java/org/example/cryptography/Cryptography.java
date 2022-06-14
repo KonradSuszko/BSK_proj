@@ -67,52 +67,6 @@ public class Cryptography {
         return cipher.doFinal(Base64.getDecoder().decode(cipherText));
     }
 
-    public static void encryptFile(String algorithm, SecretKey key, IvParameterSpec iv,
-                                   @NotNull ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
-            NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException,
-            BadPaddingException, IllegalBlockSizeException {
-
-        Cipher cipher = Cipher.getInstance(algorithm);
-        cipher.init(Cipher.ENCRYPT_MODE, key, iv);
-        byte[] buffer = new byte[64];
-        int bytesRead;
-        while ((bytesRead = inputStream.read(buffer)) != -1) {
-            byte[] output = cipher.update(buffer, 0, bytesRead);
-            if (output != null) {
-                outputStream.write(output);
-            }
-        }
-        byte[] outputBytes = cipher.doFinal();
-        if (outputBytes != null) {
-            outputStream.write(outputBytes);
-        }
-        inputStream.close();
-        outputStream.close();
-    }
-
-    public static void decryptFile(String algorithm, SecretKey key, IvParameterSpec iv,
-                                   @NotNull ObjectInputStream inputStream, ObjectOutputStream outputStream) throws IOException, NoSuchPaddingException,
-            NoSuchAlgorithmException, InvalidAlgorithmParameterException, InvalidKeyException,
-            BadPaddingException, IllegalBlockSizeException {
-
-        Cipher cipher = Cipher.getInstance(algorithm);
-        cipher.init(Cipher.DECRYPT_MODE, key, iv);
-        byte[] buffer = new byte[64];
-        int bytesRead;
-        while ((bytesRead = inputStream.read(buffer)) != -1) {
-            byte[] output = cipher.update(buffer, 0, bytesRead);
-            if (output != null) {
-                outputStream.write(output);
-            }
-        }
-        byte[] outputBytes = cipher.doFinal();
-        if (outputBytes != null) {
-            outputStream.write(outputBytes);
-        }
-        inputStream.close();
-        outputStream.close();
-    }
-
     public static String encryptWithRSA(PublicKey key, @NotNull String content) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.ENCRYPT_MODE, key);

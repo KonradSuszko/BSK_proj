@@ -7,6 +7,7 @@ import org.example.networking.Message;
 import org.example.networking.MessageType;
 import org.example.ui.ChatView;
 
+import javax.crypto.*;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.swing.*;
@@ -33,6 +34,7 @@ public class ListenerThread implements Runnable {
     private String extension;
     private KeyPair keyPair;
     private KeyBoard keyBoard;
+    private boolean correctPass;
 
     @Override
     public void run() {
@@ -43,20 +45,33 @@ public class ListenerThread implements Runnable {
                     switch (message.getType()) {
                         case CBC_MESSAGE -> {
                             SecretKey key = GeneratorOfKeys.getKeyFromPassword(chatView.getSessionKey(), "2137");
-                            String msg = Cryptography.decrypt("AES/CBC/PKCS5Padding", message.getText(), key, new IvParameterSpec(message.getIv()));
+                            byte[] data = new byte[10];
+                            new Random().nextBytes(data);
+                            String msg = new String(data);
+                            if (correctPass)
+                                msg = Cryptography.decrypt("AES/CBC/PKCS5Padding", message.getText(), key, new IvParameterSpec(message.getIv()));
                             board.put(msg);
                             chatView.setIv(Arrays.copyOfRange(message.getText().getBytes(), 0, 16));
                             writeStream.writeObject(new Message(MessageType.NOTIFY, "Text message received"));
                         }
                         case ECB_MESSAGE -> {
                             SecretKey key = GeneratorOfKeys.getKeyFromPassword(chatView.getSessionKey(), "2137");
-                            String msg = Cryptography.decrypt("AES/ECB/PKCS5Padding", message.getText(), key, null);
+                            byte[] data = new byte[10];
+                            new Random().nextBytes(data);
+                            String msg = new String(data);
+                            if (correctPass)
+                                msg = Cryptography.decrypt("AES/ECB/PKCS5Padding", message.getText(), key, null);
                             board.put(msg);
                             writeStream.writeObject(new Message(MessageType.NOTIFY, "Text message received"));
                         }
                         case NOTIFY -> JOptionPane.showMessageDialog(window, "[Other guy]: " + message.getText(), "Notification", JOptionPane.INFORMATION_MESSAGE);
-                        case EXTENSION -> extension = message.getText();
+                        case EXTENSION -> {
+                            extension = ".txt";
+                            if (correctPass)
+                                extension = message.getText();
+                        }
                         case CBC_FILE -> {
+                            long startTime = System.currentTimeMillis();
                             SecretKey key = GeneratorOfKeys.getKeyFromPassword(chatView.getSessionKey(), "2137");
                             byte[] buff;
                             Message obj;
@@ -66,7 +81,11 @@ public class ListenerThread implements Runnable {
                                 if (obj == null) {
                                     break;
                                 }
-                                buff = Cryptography.decryptBytes("AES/CBC/NoPadding", obj.getData(), key, new IvParameterSpec(message.getIv()));
+                                byte[] data = new byte[1024];
+                                new Random().nextBytes(data);
+                                buff = data;
+                                if (correctPass)
+                                    buff = Cryptography.decryptBytes("AES/CBC/NoPadding", obj.getData(), key, new IvParameterSpec(message.getIv()));
                                 outputStream.writeBytes(buff);
                             }
                             byte[] fileOut = outputStream.toByteArray();
@@ -74,10 +93,12 @@ public class ListenerThread implements Runnable {
                             try (OutputStream os = new FileOutputStream(tmp)) {
                                 os.write(fileOut);
                             }
+                            System.out.printf("Received %.2f MB  time: %s ms\n", fileOut.length/1048576.0, String.valueOf(System.currentTimeMillis() - startTime));                            board.put("Sent you file -> " + tmp.getName());
                             board.put("Sent you file -> " + tmp.getName());
                             writeStream.writeObject(new Message(MessageType.NOTIFY, "File received"));
                         }
                         case ECB_FILE -> {
+                            long startTime = System.currentTimeMillis();
                             SecretKey key = GeneratorOfKeys.getKeyFromPassword(chatView.getSessionKey(), "2137");
                             byte[] buff;
                             Message obj;
@@ -87,7 +108,11 @@ public class ListenerThread implements Runnable {
                                 if (obj == null) {
                                     break;
                                 }
-                                buff = Cryptography.decryptBytes("AES/ECB/PKCS5Padding", obj.getData(), key, null);
+                                byte[] data = new byte[1024];
+                                new Random().nextBytes(data);
+                                buff = data;
+                                if (correctPass)
+                                    buff = Cryptography.decryptBytes("AES/ECB/PKCS5Padding", obj.getData(), key, null);
                                 outputStream.writeBytes(buff);
                             }
                             byte[] fileOut = outputStream.toByteArray();
@@ -95,7 +120,7 @@ public class ListenerThread implements Runnable {
                             try (OutputStream os = new FileOutputStream(tmp)) {
                                 os.write(fileOut);
                             }
-                            board.put("Sent you file -> " + tmp.getName());
+                            System.out.printf("Received %.2f MB  time: %s ms\n", fileOut.length/1048576.0, String.valueOf(System.currentTimeMillis() - startTime));                            board.put("Sent you file -> " + tmp.getName());
                             writeStream.writeObject(new Message(MessageType.NOTIFY, "File received"));
                         }
                         case KEY_REQUEST -> {

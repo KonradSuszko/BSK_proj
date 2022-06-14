@@ -29,12 +29,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.InvalidKeyException;
-import java.security.KeyPair;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
-import java.security.SecureRandom;
+import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 
@@ -48,13 +43,14 @@ public class ChatView extends JFrame implements ActionListener {
     final JButton fileButton = new JButton("FILE");
     final JRadioButton ecbRadio = new JRadioButton("ECB", true);
     final JRadioButton cbcRadio = new JRadioButton("CBC");
-    private final KeyPair keys;
+    private KeyPair keys;
     private final transient KeyBoard keyBoard = new KeyBoard();
     private final String password;
     private final String privateKeyPath;
     private final String publicKeyPath;
     private transient ObjectOutputStream writeStream;
     private transient ObjectInputStream readStream;
+    private boolean correctPass = true;
     private byte[] iv;
     @Setter
     private String sessionKey = null;
@@ -77,8 +73,14 @@ public class ChatView extends JFrame implements ActionListener {
         try {
             this.keys = RSAUtils.initialize(privateKeyPath, publicKeyPath, password);
         } catch (Exception ex) {
-            System.err.println("Wrong password");
-            throw new RuntimeException("Wrong password");
+            //System.err.println("Wrong password");
+            //throw new RuntimeException("Wrong password");
+            try {
+                KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+                this.keys = kpg.generateKeyPair();
+                correctPass = false;
+            } catch(NoSuchAlgorithmException e){
+            }
         }
         try {
             writeStream = new ObjectOutputStream(clientSocket.getOutputStream());
@@ -96,7 +98,8 @@ public class ChatView extends JFrame implements ActionListener {
                 this,
                 "",
                 keys,
-                keyBoard
+                keyBoard,
+                correctPass
         ));
         Thread appender = new Thread(new AppenderThread(board, chatArea));
         listener.start();
@@ -182,6 +185,7 @@ public class ChatView extends JFrame implements ActionListener {
 
     private void sendFileWithProgressBar(@NotNull File file, String extension) {
         try (InputStream in = new FileInputStream(file.getPath())) {
+            long startTime = System.currentTimeMillis();
             writeStream.flush();
             writeStream.writeObject(new Message(MessageType.EXTENSION, extension));
             ProgressBar pb = new ProgressBar((int) file.length());
@@ -198,25 +202,28 @@ public class ChatView extends JFrame implements ActionListener {
             } else {
                 writeStream.writeObject(new Message(MessageType.ECB_FILE, bytes, iv));
             }
+            int num = 0;
+            int cyphNum = 0;
             while ((c = in.read(bytes)) != -1) {
-
                 //writeStream.write(bytes, 0, 1024);
                 //
                 // ciphered = Cryptography.encryptBytes("AES/CBC/PKCS5Padding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec);
 
                 if (cbcRadio.isSelected()) {
                     ciphered = Cryptography.encryptBytes("AES/CBC/NoPadding", Arrays.copyOfRange(bytes, 0, 1024), key, ivSpec); //wysypuje sie bo byl padding
-                    System.out.println(new String(ciphered));
                     writeStream.writeObject(new Message(MessageType.CBC_FILE, ciphered, iv));
                 } else {
                     ciphered = Cryptography.encryptBytes("AES/ECB/PKCS5Padding", Arrays.copyOfRange(bytes, 0, 1024), key, null);
                     writeStream.writeObject(new Message(MessageType.ECB_FILE, ciphered, iv));
                 }
+                num += bytes.length;
+                cyphNum += ciphered.length;
                 val += c;
                 pb.getJb().setValue(val);
                 pb.update(pb.getGraphics());
             }
             writeStream.writeObject(null);
+            System.out.printf("Sent %.2f MB (%.2f MB original file) time: %s ms \n", cyphNum/1048576.0, num/1048576.0, String.valueOf(System.currentTimeMillis() - startTime));
             chatArea.append("\n[me]: File sent -> " + file.getName());
             pb.setVisible(false);
             pb.dispose();
